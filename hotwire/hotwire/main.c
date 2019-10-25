@@ -10,16 +10,17 @@
 
 #define F_CPU 8000000
 #include <avr/io.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 #include <avr/interrupt.h>
 
 int main(void) {
 
-	DDRA |= 0b11111000;
-	PORTB &= ~(1 << PB3); // PB3 ground
+	DDRA |= 0b11111000;		// set side-A ports to output
+	DDRB |= (1 << PB3); 	// set pin4 of port b to output (LED/7Segment)
+	DDRB |= (0 << PB6); 	// Input for wire and button
 
-	PORTA=0;
-	PORTB=0;
+	PORTA=0;				// set all pins of port a to low
+	PORTB=0;				// set all pins of port b to low
 	
     while (1) {
 
@@ -27,7 +28,7 @@ int main(void) {
     	_delay_ms(500);
     	//PORTA &= ~(1 << PA3); // PA3 goes low
 
-    	PORTA ^= 0b11111000;
+    	PORTA ^= 0b11111000;	// toggle Port A
     }
 }
 
