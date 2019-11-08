@@ -15,6 +15,7 @@
 
 const int TASTER = PB6;
 volatile int running = 0;
+volatile int misses = 0;
 
 static void initInterrupt() {
 	
@@ -43,6 +44,35 @@ ISR(INT0_vect) {
 		}
 	}
 	sei();
+}
+
+void draw7segment(void) {
+	
+	switch(misses) {
+		case 0: 
+			break;
+		case 1: 
+			break;
+		case 2: 
+			break;
+		case 3: 
+			break;
+		case 4: 
+			break;
+		case 5: 
+			break;
+		case 6: 
+			break;
+		case 7: 
+			break;
+		case 8: 
+			break;
+		case 9: 
+			break;
+		default: 
+			misses = 0;
+			break;
+	}
 }
 
 int main(void) {
