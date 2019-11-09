@@ -4,7 +4,7 @@
  * Microcontroller: ATTiny261A
  *
  * Created: 01.11.2019
- * Author : Dustin Krˆger, Max Matkowitz
+ * Author : Dustin Kr√∂ger, Max Matkowitz
  * Version: 0.2
  */ 
 
@@ -19,16 +19,16 @@ volatile int misses = 0;
 /************************************************************************/
 /* Timer                                                                */
 /************************************************************************/
-volatile int sec = 0;		// volatile => fl¸chtig, da in interrupt konfigurierbar sein muss
-volatile int count = 0;		// count Variable f¸r 8-Bit-Timer
+volatile int sec = 0;		// volatile => fl√ºchtig, da in interrupt konfigurierbar sein muss
+volatile int count = 0;		// count Variable f√ºr 8-Bit-Timer
 
 void initTimer() {
 
-	TCCR0A |= (1 << TCW0);				// TCW0 Bit f¸r Overflow Timer setzen -> sitzt in TCCR0A
+	TCCR0A |= (1 << TCW0);				// TCW0 Bit f√ºr Overflow Timer setzen -> sitzt in TCCR0A
 	TCCR0B |= (1 << CS01)|(1 << CS00);	// Prescaler auf 64 setzen (im Datenblatt schauen)
 
 	// Lowbyte zuerst lesen! Beachten: Zahlen sind immer die selben.
-	TCNT0L = (65535 - 15625) % 256;		// Z‰hlregister Startwert vorstellen
+	TCNT0L = (65535 - 15625) % 256;		// Z√§hlregister Startwert vorstellen
 	TCNT0H = (65535 - 15625) / 256;		// << 8 (8x schieben entspricht geteilt durch 256)
 
 	TIMSK |= (1 << TOIE0);				// Timer Overflow interrupt aktivieren
@@ -50,7 +50,7 @@ ISR (TIMER0_OVF_vect) {
 	else if(sec % 2 == 0)
 		PORTA = (PORTA >> 1) | (1 << PA7) ;
 	
-	TCNT0L = (65535 - 15625) % 256;		// Z‰hlregister Startwert wieder vorstellen
+	TCNT0L = (65535 - 15625) % 256;		// Z√§hlregister Startwert wieder vorstellen
 	TCNT0H = (65535 - 15625) / 256;
 }
 
@@ -90,9 +90,9 @@ ISR(INT0_vect) {
 			_delay_ms(500);
 			sec = 0;
 		}
-		else {				// Spiel l‰uft
+		else {				// Spiel l√§uft
 			PORTA=0;
-			_delay_ms(1000);	// 1s vorl‰ufig bei Ber¸hrung
+			_delay_ms(1000);	// 1s vorl√§ufig bei Ber√ºhrung
 			PORTA = 0b11111011;
 		}
 	}
@@ -100,28 +100,41 @@ ISR(INT0_vect) {
 }
 
 void draw7segment(int misses) {
+
+	//reset display when function is called
+	PORTA |= (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7);
 	
 	PORTA = 0;
 	switch(misses) {
-		case 0: // a(PA1) b(PA3) c(PA4) d(PA5) e(PA6) f(PA7)
+		case 0: // g(PA0) f(PA1) e(PA3) d(PA4) c(PA5) b(PA6) a(PA7)
+			PORTA |= (0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
-		case 1: 
+		case 1:
+			PORTA |= (0 << PA5)|(0 << PA6);
 			break;
 		case 2: 
+			PORTA |= (0 << PA0)|(0 << PA3)|(0 << PA4)|(0 << PA6)|(0 << PA7);
 			break;
 		case 3: 
+			PORTA |= (0 << PA0)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 4: 
+			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA5)|(0 << PA6);
 			break;
-		case 5: 
+		case 5:
+			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA7); 
 			break;
 		case 6: 
+			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA7);
 			break;
 		case 7: 
+			PORTA |= (0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 8: 
+			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 9: 
+			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 	}
 }
@@ -156,4 +169,3 @@ int main(void) {
 		//	PORTA ^= 0b11111000;	// toggle Port A
     }
 }
-
