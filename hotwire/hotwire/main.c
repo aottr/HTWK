@@ -4,8 +4,9 @@
  * Microcontroller: ATTiny261A
  *
  * Created: 01.11.2019
+ * Edited: 14.11.2019
  * Author : Dustin Kröger, Max Matkowitz
- * Version: 0.2
+ * Version: 0.3
  */ 
 
 #define F_CPU 8000000
@@ -43,7 +44,9 @@ ISR (TIMER0_OVF_vect) {
 	}
 	if(sec > 10) {
 		PORTA ^= 0b11111000;			// Nach dem Spiel blinken die LEDs
-		running = 0;
+		
+		if(running == 1)				// Spiel einmalig beenden.
+			endGame();
 	}
 	if(sec == 2)
 		PORTA = 0b10000000;
@@ -70,7 +73,7 @@ static void initInterrupt() {
 
 ISR(INT0_vect) {
 	
-	cli();
+	GIMSK |= (0 << INT0); // disable Int0
 	
 	if((PINB & (1 << TASTER)) == 0) {
 	
@@ -80,23 +83,50 @@ ISR(INT0_vect) {
 			
 			while((PINB & (1 << TASTER)) == 0)
 			{
-				
+				;
 			}
-			running = 1;
-			//PORTB = 0b00001000;
-			//PORTA = 0b00000000;
-			PORTA = 0b11111000;
-			//draw7segment(0);
-			_delay_ms(500);
-			sec = 0;
+			if (current_sec + 3 >= sec) {
+				
+				running = 1;
+				resetGame();
+			}
 		}
 		else {				// Spiel läuft
-			PORTA=0;
-			_delay_ms(1000);	// 1s vorläufig bei Berührung
-			PORTA = 0b11111011;
+			touchedWire();
 		}
 	}
-	sei();
+	GIMSK |= (1 << INT0); // enable Int0
+}
+
+void resetGame() {
+	
+	PORTA = 0b11111000;
+	draw7segment(0);
+	sec = 0;
+}
+
+void touchedWire() {
+	
+	GIMSK |= (0 << INT0); // disable Int0
+	
+	if(++misses > 9)
+		endGame();						// End game
+	
+	draw7segment(misses);
+	
+	int current_sec = sec;
+	while((PINB & (1 << TASTER)) == 0) // Taster = Kabel
+	{
+		;
+	}
+	
+	GIMSK |= (1 << INT0); // enable Int0
+}
+
+void endGame() {
+	
+	running = 0;
+	//resetGame();
 }
 
 void draw7segment(int misses) {
@@ -155,17 +185,6 @@ int main(void) {
 	PORTB |= (1 << TASTER);
 	
     while (1) {
-		
-		if(running == 0)
-			continue;
-			
-		//sei();
-
-    	//PORTA |= (1 << PA3); // PA3 goes high
-
-    	//PORTA &= ~(1 << PA3); // PA3 goes low
-		
-		//if(running == 1)
-		//	PORTA ^= 0b11111000;	// toggle Port A
+		;
     }
 }
