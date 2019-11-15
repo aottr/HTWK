@@ -4,9 +4,9 @@
  * Microcontroller: ATTiny261A
  *
  * Created: 01.11.2019
- * Edited: 14.11.2019
+ * Edited: 15.11.2019
  * Author : Dustin Kr√∂ger, Max Matkowitz
- * Version: 0.3
+ * Version: 0.4
  */ 
 
 #define F_CPU 8000000
@@ -17,11 +17,21 @@
 volatile int running = 0;
 volatile int misses = 0;
 
-/************************************************************************/
-/* Timer                                                                */
-/************************************************************************/
 volatile int sec = 0;		// volatile => fl√ºchtig, da in interrupt konfigurierbar sein muss
-volatile int count = 0;		// count Variable f√ºr 8-Bit-Timer
+volatile int ended = 0;		// count Variable f√ºr 8-Bit-Timer
+
+const int TASTER = PB6;
+
+volatile int button_state = 0;
+volatile int button_pressed_time = 0;
+
+static void initInterrupt() {
+	
+	MCUCR |= (1 << ISC01)|(0 << ISC00);	// low level generates interrupt
+	GIMSK |= (1 << INT0);	// ext. Interrupt #0 enabled
+	
+	sei();
+}
 
 void initTimer() {
 
@@ -36,105 +46,11 @@ void initTimer() {
 	sei();								// globales Aktivieren der Interrupts
 }
 
-ISR (TIMER0_OVF_vect) {
-
-	sec++;
-	if (sec == 60) {
-		sec = 0;
-	}
-	if(sec > 10) {
-		PORTA ^= 0b11111000;			// Nach dem Spiel blinken die LEDs
-		
-		if(running == 1)				// Spiel einmalig beenden.
-			endGame();
-	}
-	if(sec == 2)
-		PORTA = 0b10000000;
-	else if(sec % 2 == 0)
-		PORTA = (PORTA >> 1) | (1 << PA7) ;
-	
-	TCNT0L = (65535 - 15625) % 256;		// Z√§hlregister Startwert wieder vorstellen
-	TCNT0H = (65535 - 15625) / 256;
-}
-
-/************************************************************************/
-/* Button Interrupt                                                     */
-/************************************************************************/
-
-const int TASTER = PB6;
-
-static void initInterrupt() {
-	
-	MCUCR |= (1 << ISC01)|(0 << ISC00);	// low level generates interrupt
-	GIMSK |= (1 << INT0);	// ext. Interrupt #0 enabled
-	
-	sei();
-}
-
-ISR(INT0_vect) {
-	
-	GIMSK |= (0 << INT0); // disable Int0
-	
-	if((PINB & (1 << TASTER)) == 0) {
-	
-		if(running == 0) {	// Einschalten.
-			
-			int current_sec = sec;
-			
-			while((PINB & (1 << TASTER)) == 0)
-			{
-				;
-			}
-			if (current_sec + 3 >= sec) {
-				
-				running = 1;
-				resetGame();
-			}
-		}
-		else {				// Spiel l√§uft
-			touchedWire();
-		}
-	}
-	GIMSK |= (1 << INT0); // enable Int0
-}
-
-void resetGame() {
-	
-	PORTA = 0b11111000;
-	draw7segment(0);
-	sec = 0;
-}
-
-void touchedWire() {
-	
-	GIMSK |= (0 << INT0); // disable Int0
-	
-	if(++misses > 9)
-		endGame();						// End game
-	
-	draw7segment(misses);
-	
-	int current_sec = sec;
-	while((PINB & (1 << TASTER)) == 0) // Taster = Kabel
-	{
-		;
-	}
-	
-	GIMSK |= (1 << INT0); // enable Int0
-}
-
-void endGame() {
-	
-	running = 0;
-	//resetGame();
-}
-
 void draw7segment(int misses) {
 
 	//reset display when function is called
 	PORTA |= (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7);
 	
-	PORTA = 0;
 	switch(misses) {
 		case 0: // g(PA0) f(PA1) e(PA3) d(PA4) c(PA5) b(PA6) a(PA7)
 			PORTA |= (0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
@@ -169,6 +85,30 @@ void draw7segment(int misses) {
 	}
 }
 
+void resetGame() {
+	
+	//PORTA = 0b11111000;
+	draw7segment(0);
+	sec = 0;
+	ended = 0;
+	misses = 0;
+}
+
+void endGame() {
+	
+	running = 0;
+	ended = 1;
+	PORTA |= 0b11111000;
+}
+
+void touchedWire() {
+	
+	misses++;
+	if(misses == 10) {
+		endGame();						// End game
+	}
+}
+
 int main(void) {
 	
 	initTimer();
@@ -182,9 +122,98 @@ int main(void) {
 	PORTA=0;				// set all pins of port a to low
 	PORTB=0;				// set all pins of port b to low
 	
+	//PORTB |= (0 << PB3);
+	
+	//draw7segment(0);
+	
+	//PORTA |= 0b11111011;    
+	
 	PORTB |= (1 << TASTER);
 	
     while (1) {
-		;
+		
+		/************************************************************************/
+		/* MULTIPLEX                                                            */
+		/************************************************************************/
+		
+		// 1.) Alte werte von PORTA als int speichern (bzw. PORTA |= 0b11111000;)
+		// 2.) PORTB f¸r PB3 togglen (zur Auswahl ob 7Segment oder LEDs
+		// 3.) Neue werte f¸r PORTA schreiben
+		
+		// im wechsel dann halt immer die Werte aus den vorhergehenden Werten nehmen f¸r LEDs (oder einfach alle LEDs)
+		
+		/*
+			Gesetzte Werte f¸r LEDs nicht direkt in Timer setzen, sondern Wert abspeichern und hier multiplexed einsetzen
+			
+			Beispiel: volitare int LEDS die Wert von 0-255 (Registerwert) speichert, innerhalb der Timer etc ge‰ndert wird und hier an PORTA zugewiesen wird.		
+		*/
+		
     }
+}
+
+/************************************************************************/
+/* Timer                                                                */
+/************************************************************************/
+
+ISR (TIMER0_OVF_vect) {
+
+	sec++;
+	
+	if(running == 1) {
+	
+		if(sec > 10) {
+			endGame();
+		}
+		if(sec == 2)
+			PORTA = 0b10000000;
+		else if(sec % 2 == 0)
+			PORTA = (PORTA >> 1) | (1 << PA7) ; 
+	
+	} 
+	else {
+		if((PINB & (1 << TASTER)) == 0) {
+			
+			button_state = 1;
+			button_pressed_time++;
+			
+			if(button_pressed_time > 2 && running == 0) { // l‰nger als 3s gedr¸ckt 
+				
+				running = 1;
+				resetGame();
+			}
+		} else {
+			
+			button_state = 0;
+			button_pressed_time = 0;
+		}
+	}
+	
+	
+	
+	
+	if(ended == 1) {
+		PORTA ^= 0b11111000;			// Nach dem Spiel blinken die LEDs
+	}
+	
+	TCNT0L = (65535 - 15625) % 256;		// Z√§hlregister Startwert wieder vorstellen
+	TCNT0H = (65535 - 15625) / 256;
+}
+
+/************************************************************************/
+/* Button Interrupt                                                     */
+/************************************************************************/
+
+ISR(INT0_vect) {
+	
+	if(running) {
+	
+		GIMSK |= (0 << INT0); // disable Int0
+	
+		if((PINB & (1 << TASTER)) == 0) {
+			// Spiel l‰uft
+			touchedWire();
+			_delay_ms(50);
+		}
+		GIMSK |= (1 << INT0); // enable Int0
+	}
 }
