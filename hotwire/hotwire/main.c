@@ -88,7 +88,6 @@ void draw7segment(int misses) {
 void resetGame() {
 	
 	//PORTA = 0b11111000;
-	draw7segment(0);
 	sec = 0;
 	ended = 0;
 	misses = 0;
@@ -98,7 +97,7 @@ void endGame() {
 	
 	running = 0;
 	ended = 1;
-	PORTA |= 0b11111000;
+	time |= 0b11111000;
 }
 
 void touchedWire() {
@@ -121,6 +120,8 @@ int main(void) {
 
 	PORTA=0;				// set all pins of port a to low
 	PORTB=0;				// set all pins of port b to low
+
+	volatile int time = PORTA;
 	
 	//PORTB |= (0 << PB3);
 	
@@ -136,17 +137,14 @@ int main(void) {
 		/* MULTIPLEX                                                            */
 		/************************************************************************/
 		
-		// 1.) Alte werte von PORTA als int speichern (bzw. PORTA |= 0b11111000;)
-		// 2.) PORTB für PB3 togglen (zur Auswahl ob 7Segment oder LEDs
-		// 3.) Neue werte für PORTA schreiben
-		
-		// im wechsel dann halt immer die Werte aus den vorhergehenden Werten nehmen für LEDs (oder einfach alle LEDs)
-		
-		/*
-			Gesetzte Werte für LEDs nicht direkt in Timer setzen, sondern Wert abspeichern und hier multiplexed einsetzen
-			
-			Beispiel: volitare int LEDS die Wert von 0-255 (Registerwert) speichert, innerhalb der Timer etc geändert wird und hier an PORTA zugewiesen wird.		
-		*/
+		// 1.) time auf LED-Anzeige ausgeben (time wird im Programmfluss manipuliert)
+    	PORTA = time;
+
+		// 2.) PORTB für PB3 togglen (zur Auswahl ob 7Segment oder LEDs)
+    	PORTB ^= 0b00001000;
+
+		// 3.) Misses auf 7Segment anzeigen
+		draw7segment(misses);
 		
     }
 }
@@ -165,9 +163,9 @@ ISR (TIMER0_OVF_vect) {
 			endGame();
 		}
 		if(sec == 2)
-			PORTA = 0b10000000;
+			time = 0b10000000;
 		else if(sec % 2 == 0)
-			PORTA = (PORTA >> 1) | (1 << PA7) ; 
+			time = (time >> 1) | (1 << 7) ; 
 	
 	} 
 	else {
@@ -192,7 +190,7 @@ ISR (TIMER0_OVF_vect) {
 	
 	
 	if(ended == 1) {
-		PORTA ^= 0b11111000;			// Nach dem Spiel blinken die LEDs
+		time ^= 0b11111000;			// Nach dem Spiel blinken die LEDs
 	}
 	
 	TCNT0L = (65535 - 15625) % 256;		// ZÃ¤hlregister Startwert wieder vorstellen
