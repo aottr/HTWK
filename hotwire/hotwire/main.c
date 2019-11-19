@@ -4,11 +4,12 @@
  * Microcontroller: ATTiny261A
  *
  * Created: 01.11.2019
- * Edited: 15.11.2019
+ * Edited: 19.11.2019
  * Author : Dustin Kröger, Max Matkowitz
- * Version: 0.4
+ * Version: 0.5
  */ 
 
+// frequency of cpu (effectively 1 MHz)
 #define F_CPU 8000000
 
 #include <avr/io.h>
@@ -59,7 +60,7 @@ void initTimer0() {
 // initialize timer for multiplexing
 void initTimer1() {
 	
-	TCCR1A |= (1 << CS10)|(1 << CS13); // timer/counter control register - prescaler 256
+	TCCR1B |= (1 << CS11)|(1 << CS12); // timer/counter control register - prescaler 32
 	OCR1C = 255; // timer/counter output compare resgister - set limit for clearing counter
 	
 	TIMSK |= (1 << TOIE1); // timer interrupt mask register - timer overflow interrupt enable for timer1
