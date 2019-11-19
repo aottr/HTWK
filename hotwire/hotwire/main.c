@@ -141,15 +141,16 @@ int main(void) {
 	
 	DDRB |= (0 << PB6); // port b data direction register - set PB6 to input (wire and button)
 	DDRB |= (1 << PB3); // port b data direction register - set PB3 to output (multiplex for leds and 7 segment display)
+	DDRB |= (1 << PB4): // port b data direction register - set PB4 to output (buzzer)
 
-	DDRA |= 0b11111011;	// port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
+	DDRA |= 0b11111011; // port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
 
 	PORTA=0; // set all pins of port a to low ???????
 	PORTB=0; // set all pins of port b to low ???????  
 	
     while (1) {
 
-		//sleep(); // sleep while no interrupt is triggered ???????
+	//sleep(); // sleep while no interrupt is triggered ???????
     }
 }
 
@@ -213,18 +214,20 @@ ISR (TIMER1_OVF_vect) {
 	}
 }
 
-// interrupt service routine for external interrupt int0 (button)
+// interrupt service routine for external interrupt int0 (button/hook)
 ISR(INT0_vect) {
 	
 	if(running) {
 	
-		GIMSK |= (0 << INT0); // interrupt mask register - if game is running and hook touches wire disable external interrupt int0 (debounced hook)
+		GIMSK |= (0 << INT0); // interrupt mask register - if game is running and hook touches wire disable external interrupt int0 (debounced button/hook)
 	
 		if((PINB & (1 << PB6)) == 0) { // ???????
 			touchedWire(); // if the hook touches the wire trigger function
+			PORTB |= (1 << PB4) // if hook touches wire trigger buzzer
 			_delay_ms(50);
+			PORTB &= ~(1 << PB4) // turn buzzer off after certain time
 		}
 
-		GIMSK |= (1 << INT0); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounce hook)
+		GIMSK |= (1 << INT0); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/hook)
 	}
 }
