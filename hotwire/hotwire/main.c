@@ -25,7 +25,6 @@ volatile int sec = 0;
 volatile int misses = 0;
 
 // variables for button state and press time
-volatile int button_state = 0; //?????????
 volatile int button_pressed_time = 0;
 
 // counter for multiplex
@@ -179,7 +178,6 @@ ISR (TIMER0_OVF_vect) {
 		
 		if((PINB & (1 << PB6)) == 0) {
 			
-			button_state = 1; // if game is not running and button is pressed set flag for button state
 			button_pressed_time++; // if game is not running and button is pressed increment press time by 1 for every overflow
 			
 			if(button_pressed_time > 2 && running == 0) { 
@@ -190,7 +188,6 @@ ISR (TIMER0_OVF_vect) {
 		} 
 		else {
 			
-			button_state = 0; // if button is not pressed set button state to 0
 			button_pressed_time = 0; // if button is not pressed reset the press time
 		}
 	}
