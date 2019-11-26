@@ -128,6 +128,9 @@ void endGame() {
 void touchedWire() {
 	
 	misses++;
+	PORTB |= (1 << PB4) // if hook touches wire trigger buzzer
+	_delay_ms(50);
+	PORTB &= ~(1 << PB4) // turn buzzer off after certain time
 	if(misses == 10) {
 		endGame;
 	}
@@ -224,9 +227,6 @@ ISR(INT0_vect) {
 	
 		if((PINB & (1 << PB6)) == 0) { // ???????
 			touchedWire(); // if the hook touches the wire trigger function
-			PORTB |= (1 << PB4) // if hook touches wire trigger buzzer
-			_delay_ms(50);
-			PORTB &= ~(1 << PB4) // turn buzzer off after certain time
 		}
 
 		GIMSK |= (1 << INT0); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/hook)
