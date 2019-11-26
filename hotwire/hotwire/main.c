@@ -148,12 +148,12 @@ int main(void) {
 
 	DDRA |= 0b11111011; // port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
 
-	PORTA=0; // set all pins of port a to low ???????
-	PORTB=0; // set all pins of port b to low ???????  
+	PORTA=0; // set all pins of port a to low
+	PORTB=0; // set all pins of port b to low
 	
     while (1) {
 
-	//sleep(); // sleep while no interrupt is triggered ???????
+	sleep(); // sleep while no interrupt is triggered
     }
 }
 
