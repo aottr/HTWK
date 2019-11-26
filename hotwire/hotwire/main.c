@@ -15,6 +15,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 // flags for game execution states
 volatile int running = 0;
@@ -31,7 +32,7 @@ volatile int button_pressed_time = 0;
 volatile int multiplex_count = 0;
 
 // variable for saving the state of PORTA (time played)
-volatile int time = PORTA;
+volatile int leds = 0;
 
 
 void initInterrupt() {
@@ -70,39 +71,39 @@ void initTimer1() {
 // draw misses to 7 segment display
 void draw7segment(int misses) {
 
-	PORTA |= (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7); // reset display when function is called
+	PORTA = (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7); // reset display when function is called
 	
 	// switch to determine segment pattern for number of misses (low-active)
 	switch(misses) {
 		case 0:
-			PORTA |= (0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 1:
-			PORTA |= (0 << PA5)|(0 << PA6);
+			PORTA = (0 << PA5)|(0 << PA6);
 			break;
 		case 2: 
-			PORTA |= (0 << PA0)|(0 << PA3)|(0 << PA4)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA0)|(0 << PA3)|(0 << PA4)|(0 << PA6)|(0 << PA7);
 			break;
 		case 3: 
-			PORTA |= (0 << PA0)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA0)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 4: 
-			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA5)|(0 << PA6);
+			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA5)|(0 << PA6);
 			break;
 		case 5:
-			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA7); 
+			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA7); 
 			break;
 		case 6: 
-			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA7);
+			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA7);
 			break;
 		case 7: 
-			PORTA |= (0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 8: 
-			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 		case 9: 
-			PORTA |= (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
 			break;
 	}
 }
@@ -120,18 +121,18 @@ void endGame() {
 	
 	running = 0;
 	ended = 1;
-	time |= 0b11111000;
+	leds |= 0b11111000;
 }
 
 // if the wire is touched, increment misses and if misses are equal to 10 end current game
 void touchedWire() {
 	
 	misses++;
-	PORTB |= (1 << PB4) // if hook touches wire trigger buzzer
-	_delay_ms(50);
-	PORTB &= ~(1 << PB4) // turn buzzer off after certain time
+	PORTB |= (1 << PB4); // if hook touches wire trigger buzzer
+	_delay_ms(20);
+	PORTB &= ~(1 << PB4); // turn buzzer off after certain time
 	if(misses == 10) {
-		endGame;
+		endGame();
 	}
 }
 
@@ -144,7 +145,7 @@ int main(void) {
 	
 	DDRB |= (0 << PB6); // port b data direction register - set PB6 to input (wire and button)
 	DDRB |= (1 << PB3); // port b data direction register - set PB3 to output (multiplex for leds and 7 segment display)
-	DDRB |= (1 << PB4): // port b data direction register - set PB4 to output (buzzer)
+	DDRB |= (1 << PB4); // port b data direction register - set PB4 to output (buzzer)
 
 	DDRA |= 0b11111011; // port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
 
@@ -153,7 +154,7 @@ int main(void) {
 	
     while (1) {
 
-	sleep(); // sleep while no interrupt is triggered
+	sleep_mode(); // sleep while no interrupt is triggered
     }
 }
 
@@ -169,10 +170,10 @@ ISR (TIMER0_OVF_vect) {
 		}
 
 		if(sec == 2)
-			time = 0b10000000; // if game is running for 2 seconds turn first led on ??????
+			leds = 0b10000000; // if game is running for 2 seconds turn first led on ??????
 
 		else if(sec % 2 == 0)
-			time = (time >> 1) | (1 << 7); // if game is running and sec is dividable by 2 bitshift one to the right while 1 is written to MSB ???????
+			leds = (leds >> 1) | (1 << 7); // if game is running and sec is dividable by 2 bitshift one to the right while 1 is written to MSB ???????
 	} 
 	else {
 		
@@ -193,7 +194,7 @@ ISR (TIMER0_OVF_vect) {
 	}
 	
 	if(ended == 1) {
-		time ^= 0b11111000; // if the game has ended toggle all leds every second
+		leds ^= 0b11111000; // if the game has ended toggle all leds every second
 	}
 	
 	TCNT0H = (65535 - 15625) / 256; // timer/counter register high byte - initial timer value for high byte
@@ -204,8 +205,8 @@ ISR (TIMER0_OVF_vect) {
 ISR (TIMER1_OVF_vect) {
 
 	if(multiplex_count == 0) {
-		PORTB &= ~(1 << PB3) // if multiplex_count is 0 set multiplex channel select port to 0
-		PORTA = time; // if multiplex_count is 0 write time to PORTA (leds)
+		PORTB ^= (1 << PB3); // if multiplex_count is 0 set multiplex channel select port to 0
+		PORTA = leds; // if multiplex_count is 0 write time to PORTA (leds)
 		multiplex_count++; // increment multiplex_count
 	}
 	else {
