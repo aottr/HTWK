@@ -20,6 +20,7 @@
 // flags for game execution states
 volatile int running = 0;
 volatile int ended = 0;
+volatile int won = 0;
 
 // counters for seconds and misses from touching wire
 volatile int sec = 0;
@@ -38,6 +39,7 @@ volatile int leds = 0;
 void initInterrupt() {
 	
 	MCUCR |= (1 << ISC01)|(0 << ISC00);	// interrupt sense control - falling edge creates interrupt
+	GIMSK |= (1 << INT1); // interrupt mask register - enable external interrupt int1
 	GIMSK |= (1 << INT0); // interrupt mask register - enable external interrupt int0
 	
 	sei(); // enable global interrupts
@@ -71,39 +73,39 @@ void initTimer1() {
 // draw misses to 7 segment display
 void draw7segment(int misses) {
 
-	PORTA = (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7); // reset display when function is called
+	PORTA |= (1 << PA0)|(1 << PA1)|(1 << PA3)|(1 << PA4)|(1 << PA5)|(1 << PA6)|(1 << PA7); // reset display when function is called
 	
 	// switch to determine segment pattern for number of misses (low-active)
 	switch(misses) {
 		case 0:
-			PORTA = (0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA1)& ~(1 << PA3)& ~(1 << PA4)& ~(1 << PA5)& ~(1 << PA6)& ~(1 << PA7);
 			break;
 		case 1:
-			PORTA = (0 << PA5)|(0 << PA6);
+			PORTA &= ~(1 << PA5)& ~(1 << PA6);
 			break;
 		case 2: 
-			PORTA = (0 << PA0)|(0 << PA3)|(0 << PA4)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA0)& ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA6) & ~(1 << PA7);
 			break;
 		case 3: 
-			PORTA = (0 << PA0)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA0) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
 			break;
 		case 4: 
-			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA5)|(0 << PA6);
+			PORTA &= ~(1 << PA0) & ~(1 << PA1) & ~(1 << PA5) & ~(1 << PA6);
 			break;
 		case 5:
-			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA7); 
+			PORTA &= ~(1 << PA0) & ~(1 << PA1) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA7); 
 			break;
 		case 6: 
-			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA7);
+			PORTA &= ~(1 << PA0) & ~(1 << PA1) & ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA7);
 			break;
 		case 7: 
-			PORTA = (0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
 			break;
 		case 8: 
-			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA3)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA0) & ~(1 << PA1) & ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
 			break;
 		case 9: 
-			PORTA = (0 << PA0)|(0 << PA1)|(0 << PA4)|(0 << PA5)|(0 << PA6)|(0 << PA7);
+			PORTA &= ~(1 << PA0) & ~(1 << PA1) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
 			break;
 	}
 }
@@ -114,6 +116,7 @@ void resetGame() {
 	sec = 0;
 	ended = 0;
 	misses = 0;
+	leds &= ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
 }
 
 // end current game, set flags and set time for leds to max
@@ -136,6 +139,16 @@ void touchedWire() {
 	}
 }
 
+void touchedGoalWire() {
+	
+	if(misses < 10) {
+		won = 1;
+	}
+	else {
+		won = 0;
+	}
+}
+
 
 int main(void) {
 	
@@ -143,18 +156,23 @@ int main(void) {
 	initTimer1();
 	initInterrupt();
 	
-	DDRB |= (0 << PB6); // port b data direction register - set PB6 to input (wire and button)
+	DDRB &= ~(1 << PB6); // port b data direction register - set PB6 to input (wire and button)
+	DDRA &= ~(1 << PA2); // port a data direction register - set PA3 to input (wire)
 	DDRB |= (1 << PB3); // port b data direction register - set PB3 to output (multiplex for leds and 7 segment display)
 	DDRB |= (1 << PB4); // port b data direction register - set PB4 to output (buzzer)
 
 	DDRA |= 0b11111011; // port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
 
 	PORTA=0; // set all pins of port a to low
+	
+	//PORTA |= (1 << PA2);
+	
 	PORTB=0; // set all pins of port b to low
 	
     while (1) {
 
-	sleep_mode(); // sleep while no interrupt is triggered
+	//sleep_mode(); // sleep while no interrupt is triggered
+
     }
 }
 
@@ -164,16 +182,19 @@ ISR (TIMER0_OVF_vect) {
 	sec++; // increment sec for every overflow
 	
 	if(running == 1) {
+		
+		GIMSK |= (1 << INT1); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/hook)
+
 	
 		if(sec > 10) {
 			endGame(); // if game is running longer than 10 seconds end the game
 		}
 
 		if(sec == 2)
-			leds = 0b10000000; // if game is running for 2 seconds turn first led on ??????
+			leds |= (1 << 7); // if game is running for 2 seconds turn first led on
 
 		else if(sec % 2 == 0)
-			leds = (leds >> 1) | (1 << 7); // if game is running and sec is dividable by 2 bitshift one to the right while 1 is written to MSB ???????
+			leds |= (leds >> 1) | (1 << 7); // if game is running and sec is dividable by 2 bitshift one to the right while 1 is written to MSB ???????
 	} 
 	else {
 		
@@ -197,6 +218,10 @@ ISR (TIMER0_OVF_vect) {
 		leds ^= 0b11111000; // if the game has ended toggle all leds every second
 	}
 	
+	if(won == 1) {
+		//TODO
+	}
+	
 	TCNT0H = (65535 - 15625) / 256; // timer/counter register high byte - initial timer value for high byte
 	TCNT0L = (65535 - 15625) % 256; // timer/counter register low byte - initial timer value for low byte (remaining after TCNT0H is set)
 }
@@ -216,17 +241,33 @@ ISR (TIMER1_OVF_vect) {
 	}
 }
 
-// interrupt service routine for external interrupt int0 (button/hook)
-ISR(INT0_vect) {
+//interrupt service routine for external interrupt int1 (goal wire)
+ISR(INT1_vect) {
+	
+	GIMSK &= ~(1 << INT1); // interrupt mask register - if game is running and hook touches wire disable external interrupt int1 (debounced button/goal wire)
 	
 	if(running) {
+		
+		if((PINA & (1 << PA2)) == 0) {
+			touchedGoalWire();
+		}
+	}
 	
-		GIMSK |= (0 << INT0); // interrupt mask register - if game is running and hook touches wire disable external interrupt int0 (debounced button/hook)
+	GIMSK |= (1 << INT1); // interrupt mask register - when wire was touched re-enable external interrupt int1 (debounced button/goal wire)
+
+}
+
+// interrupt service routine for external interrupt int0 (button/start wire)
+ISR(INT0_vect) {
 	
-		if((PINB & (1 << PB6)) == 0) { // ???????
+	GIMSK &= ~(1 << INT0); // interrupt mask register - if game is running and hook touches wire disable external interrupt int0 (debounced button/start wire)
+	
+	if(running) {
+		
+		if((PINB & (1 << PB6)) == 0) {
 			touchedWire(); // if the hook touches the wire trigger function
 		}
-
-		GIMSK |= (1 << INT0); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/hook)
 	}
+	
+	GIMSK |= (1 << INT0); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/start wire)
 }
