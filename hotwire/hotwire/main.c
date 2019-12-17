@@ -19,7 +19,6 @@
 
 // flags for game execution states
 volatile int running = 0;
-volatile int ended = 0;
 volatile int won = 0;
 
 // counters for seconds and misses from touching wire
@@ -114,32 +113,27 @@ void draw7segment(int misses) {
 void resetGame() {
 	
 	sec = 0;
-	ended = 0;
+	won = 0;
 	misses = 0;
+	running = 1;
 	leds &= ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
-}
-
-// end current game, set flags and set time for leds to max
-void endGame() {
-	
-	running = 0;
-	ended = 1;
-	leds |= 0b11111000;
 }
 
 // if the wire is touched, increment misses and if misses are equal to 10 end current game
 void touchedWire() {
 	
 	misses++;
+
 	PORTB |= (1 << PB4); // if hook touches wire trigger buzzer
 	_delay_ms(20);
 	PORTB &= ~(1 << PB4); // turn buzzer off after certain time
-	if(misses == 10) {
-		endGame();
-	}
 }
 
 void touchedGoalWire() {
+	
+	PORTB |= (1 << PB4); // if hook touches wire trigger buzzer
+	_delay_ms(20);
+	PORTB &= ~(1 << PB4); // turn buzzer off after certain time
 	
 	if(misses < 10) {
 		won = 1;
@@ -148,7 +142,6 @@ void touchedGoalWire() {
 		won = 0;
 	}
 }
-
 
 int main(void) {
 	
@@ -160,13 +153,9 @@ int main(void) {
 	DDRA &= ~(1 << PA2); // port a data direction register - set PA3 to input (wire)
 	DDRB |= (1 << PB3); // port b data direction register - set PB3 to output (multiplex for leds and 7 segment display)
 	DDRB |= (1 << PB4); // port b data direction register - set PB4 to output (buzzer)
-
 	DDRA |= 0b11111011; // port a data direction register - set all pins except PA2 of PORTA to output (leds and 7 segment display)
 
 	PORTA=0; // set all pins of port a to low
-	
-	//PORTA |= (1 << PA2);
-	
 	PORTB=0; // set all pins of port b to low
 	
     while (1) {
@@ -184,10 +173,9 @@ ISR (TIMER0_OVF_vect) {
 	if(running == 1) {
 		
 		GIMSK |= (1 << INT1); // interrupt mask register - when wire was touched re-enable external interrupt int0 (debounced button/hook)
-
 	
-		if(sec > 10) {
-			endGame(); // if game is running longer than 10 seconds end the game
+		if(sec > 10 || misses == 10 || won == 1) {
+			running = 0; // if game is running longer than 10 seconds end the game
 		}
 
 		if(sec == 2)
@@ -204,7 +192,6 @@ ISR (TIMER0_OVF_vect) {
 			
 			if(button_pressed_time > 2 && running == 0) { 
 				
-				running = 1; //if button is pressed longer than 3 seconds set flag for running
 				resetGame(); //if button is pressed longer than 3 seconds reset the game
 			}
 		} 
@@ -212,14 +199,10 @@ ISR (TIMER0_OVF_vect) {
 			
 			button_pressed_time = 0; // if button is not pressed reset the press time
 		}
-	}
-	
-	if(ended == 1) {
-		leds ^= 0b11111000; // if the game has ended toggle all leds every second
-	}
-	
-	if(won == 1) {
-		//TODO
+
+		if(won == 0) {
+			leds ^= 0b11111000; // if the game was lost toggle all leds every second
+		}
 	}
 	
 	TCNT0H = (65535 - 15625) / 256; // timer/counter register high byte - initial timer value for high byte
@@ -229,8 +212,13 @@ ISR (TIMER0_OVF_vect) {
 // interrupt service routine for timer1 overflow
 ISR (TIMER1_OVF_vect) {
 
+	if(multiplex_count == 0 && won == 1) {
+		leds ^= 0b11111000;
+		PORTB ^= 0b00010000;
+	}
+
 	if(multiplex_count == 0) {
-		PORTB ^= (1 << PB3); // if multiplex_count is 0 set multiplex channel select port to 0
+		PORTB &= ~(1 << PB3); // if multiplex_count is 0 set multiplex channel select port to 0
 		PORTA = leds; // if multiplex_count is 0 write time to PORTA (leds)
 		multiplex_count++; // increment multiplex_count
 	}
@@ -254,7 +242,6 @@ ISR(INT1_vect) {
 	}
 	
 	GIMSK |= (1 << INT1); // interrupt mask register - when wire was touched re-enable external interrupt int1 (debounced button/goal wire)
-
 }
 
 // interrupt service routine for external interrupt int0 (button/start wire)
