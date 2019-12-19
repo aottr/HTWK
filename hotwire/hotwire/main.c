@@ -117,6 +117,7 @@ void resetGame() {
 	misses = 0;
 	running = 1;
 	leds &= ~(1 << PA3) & ~(1 << PA4) & ~(1 << PA5) & ~(1 << PA6) & ~(1 << PA7);
+	PORTB &= ~(1 << PB4); // turn buzzer off
 }
 
 // if the wire is touched, increment misses and if misses are equal to 10 end current game
